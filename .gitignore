@@ -1,0 +1,110 @@
+# ============================================
+# LLM Balancer - Git Ignore
+# ============================================
+
+# Environment variables (contains API keys!)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Test results and output files
+load-testing/results/
+load-testing/*.json
+load-testing/*.csv
+load-testing/*.png
+advanced_results_*.json
+
+# Model cache (large files)
+models/
+*.bin
+*.safetensors
+*.gguf
+*.pt
+*.pth
+*.ckpt
+
+# Monitoring data
+monitoring/data/
+prometheus-data/
+grafana-data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Local development scripts
+local/
+*.local.sh
+
+# Misc
+*.bak
+*.orig
+*.rej

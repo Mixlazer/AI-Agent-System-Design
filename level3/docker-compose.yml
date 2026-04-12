@@ -1,0 +1,186 @@
+version: "3.8"
+
+services:
+  # ── LLM Provider Mocks ──────────────────────────────────
+  openrouter:
+    build:
+      context: ./providers
+    environment:
+      PROVIDER_NAME: openrouter
+    ports:
+      - "8001:8001"
+    command: ["python", "mock_provider.py", "8001"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  vllm:
+    build:
+      context: ./providers
+    environment:
+      PROVIDER_NAME: vllm
+    ports:
+      - "8002:8002"
+    command: ["python", "mock_provider.py", "8002"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  ollama:
+    build:
+      context: ./providers
+    environment:
+      PROVIDER_NAME: ollama
+    ports:
+      - "8003:8003"
+    command: ["python", "mock_provider.py", "8003"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  cloud:
+    build:
+      context: ./providers
+    environment:
+      PROVIDER_NAME: cloud
+    ports:
+      - "8004:8004"
+    command: ["python", "mock_provider.py", "8004"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── A2A Agent & LLM Provider Registry ───────────────────
+  registry:
+    build:
+      context: ./registry
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Guardrails Service ──────────────────────────────────
+  guardrails:
+    build:
+      context: ./guardrails
+    ports:
+      - "8020:8020"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8020/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Auth Service ────────────────────────────────────────
+  auth:
+    build:
+      context: ./auth
+    ports:
+      - "8030:8030"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8030/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── LLM Balancer V3 ─────────────────────────────────────
+  balancer:
+    build:
+      context: ./balancer
+    environment:
+      REGISTRY_URL: http://registry:8010
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      GUARDRAILS_URL: http://guardrails:8020
+      AUTH_URL: http://auth:8030
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    ports:
+      - "8000:8000"
+      - "9464:9464"
+    depends_on:
+      registry:
+        condition: service_healthy
+      guardrails:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      openrouter:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      cloud:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Init: register providers & agents ───────────────────
+  init-providers:
+    build:
+      context: .
+      dockerfile: init_providers.Dockerfile
+    environment:
+      REGISTRY_URL: http://registry:8010
+    depends_on:
+      registry:
+        condition: service_healthy
+    restart: "no"
+
+  # ── MLFlow ───────────────────────────────────────────────
+  mlflow:
+    image: python:3.11-slim
+    command: >
+      bash -c "pip install --no-cache-dir mlflow==2.11.1 &&
+               mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/app
+
+  # ── Observability Stack ──────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"
+      - "8889:8889"
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  mlflow_data:
