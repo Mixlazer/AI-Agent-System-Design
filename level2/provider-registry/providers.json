@@ -1,0 +1,24 @@
+[
+  {
+    "name": "ollama-local",
+    "provider_type": "ollama",
+    "base_url": "http://ollama:11434",
+    "models": ["llama3.2:1b"],
+    "price_per_input_token": 0.0,
+    "price_per_output_token": 0.0,
+    "priority": 1,
+    "weight": 1.2,
+    "timeout_seconds": 120
+  },
+  {
+    "name": "mock-provider",
+    "provider_type": "mock",
+    "base_url": "http://mock-provider:8001",
+    "models": ["mock-llama-7b", "mock-mistral-7b"],
+    "price_per_input_token": 0.000001,
+    "price_per_output_token": 0.000002,
+    "priority": 2,
+    "weight": 1.0,
+    "timeout_seconds": 30
+  }
+]
